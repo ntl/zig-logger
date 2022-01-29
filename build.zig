@@ -1,8 +1,10 @@
 const std = @import("std");
 
 pub fn build(b: *std.build.Builder) void {
-    const library_name = "TEMPLATE_LIBRARY";
-    const root_src = "TEMPLATE_ROOT_SRC";
+    const library_name = "log";
+    const root_src = "src/log.zig";
+
+    const target = b.standardTargetOptions(.{});
 
     const mode = b.standardReleaseOptions();
 
@@ -15,10 +17,11 @@ pub fn build(b: *std.build.Builder) void {
     const update_formatting = b.step("update-formatting", "Update source formatting (zig fmt)");
     update_formatting.dependOn(&fmt.step);
 
-    var main_tests = b.addTest("test/automated.zig");
-    main_tests.addPackagePath(library_name, root_src);
-    main_tests.setBuildMode(mode);
+    var tests = b.addTest("test/automated.zig");
+    tests.setBuildMode(mode);
+    tests.setTarget(target);
+    tests.addPackagePath(library_name, root_src);
 
     const test_step = b.step("test", "Run library tests");
-    test_step.dependOn(&main_tests.step);
+    test_step.dependOn(&tests.step);
 }
