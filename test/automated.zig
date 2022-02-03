@@ -1,3 +1,3 @@
 test {
-    _ = @import("./automated/example.zig");
+    _ = @import("./automated/tagging.zig");
 }
