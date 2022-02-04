@@ -5,9 +5,9 @@ const Filter = Log.Tagging.Filter;
 const Digest = Log.Tagging.Digest;
 
 test "Initial State" {
-    const filter = Filter.init();
+    const filter = Filter{};
 
-    try std.testing.expectEqual(filter.state, Filter.State.untagged);
+    try std.testing.expect(filter.state == Filter.State.untagged);
 }
 
 test "Add Tag" {
@@ -15,9 +15,19 @@ test "Add Tag" {
 
     filter.addTag(Digest.tag("some_tag"));
 
-    try std.testing.expectEqual(filter.state, Filter.State.matched);
+    try std.testing.expect(filter.state == Filter.State.matched);
+}
+
+test "Build" {
+    var filter = try Filter.build();
+
+    try std.testing.expect(@TypeOf(filter) == Filter);
 }
 
 test "State Machine" {
     _ = @import("./filter/state_machine.zig");
+}
+
+test "Build" {
+    _ = @import("./filter/init.zig");
 }

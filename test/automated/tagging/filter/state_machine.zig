@@ -9,7 +9,7 @@ fn testNextState(filter: Filter, tag: []const u8, control_state: Filter.State) !
 
     const nextState = filter.nextState(tag_digest);
 
-    try std.testing.expectEqual(nextState, control_state);
+    try std.testing.expect(nextState == control_state);
 }
 
 test "Next State; Untagged State" {
