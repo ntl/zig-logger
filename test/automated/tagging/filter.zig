@@ -10,14 +10,6 @@ test "Initial State" {
     try std.testing.expect(filter.state == Filter.State.untagged);
 }
 
-test "Add Tag" {
-    var filter = Filter{ .state = Filter.State.untagged, .include_list = Digest.tags(.{"some_tag"}) };
-
-    filter.addTag(Digest.tag("some_tag"));
-
-    try std.testing.expect(filter.state == Filter.State.matched);
-}
-
 test "Build" {
     var filter = try Filter.build();
 
@@ -30,4 +22,8 @@ test "State Machine" {
 
 test "Build" {
     _ = @import("./filter/init.zig");
+}
+
+test "Specialize" {
+    _ = @import("./filter/specialize.zig");
 }

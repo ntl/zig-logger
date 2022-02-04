@@ -17,122 +17,122 @@ test "Next State; Untagged State" {
 
     // LOG_TAGS=""
     var filter = Filter{ .state = untagged_state };
-    try testNextState(filter, "_override", Filter.State.print);
-    try testNextState(filter, "*", Filter.State.print);
-    try testNextState(filter, "some_tag", Filter.State.match_needed);
+    try testNextState(filter, "_override", Filter.State.override);
+    try testNextState(filter, "*", Filter.State.override);
+    try testNextState(filter, "some_tag", Filter.State.no_match);
 
     // LOG_TAGS="some_tag"
     filter = Filter{ .state = untagged_state, .include_list = Digest.tags(.{"some_tag"}) };
-    try testNextState(filter, "some_tag", Filter.State.matched);
-    try testNextState(filter, "other_tag", Filter.State.match_needed);
+    try testNextState(filter, "some_tag", Filter.State.match);
+    try testNextState(filter, "other_tag", Filter.State.no_match);
 
     // LOG_TAGS="-some_tag"
     filter = Filter{ .state = untagged_state, .exclude_list = Digest.tags(.{"some_tag"}) };
-    try testNextState(filter, "some_tag", Filter.State.excluded);
-    try testNextState(filter, "other_tag", Filter.State.match_needed);
+    try testNextState(filter, "some_tag", Filter.State.exclude);
+    try testNextState(filter, "other_tag", Filter.State.no_match);
 
     // LOG_TAGS="-some_tag,some_tag"
     filter = Filter{ .state = untagged_state, .include_list = Digest.tags(.{"some_tag"}), .exclude_list = Digest.tags(.{"some_tag"}) };
-    try testNextState(filter, "some_tag", Filter.State.excluded);
-    try testNextState(filter, "other_tag", Filter.State.match_needed);
+    try testNextState(filter, "some_tag", Filter.State.exclude);
+    try testNextState(filter, "other_tag", Filter.State.no_match);
 }
 
 test "Next State; Match Needed State" {
-    const match_needed_state = Filter.State.match_needed;
+    const no_match_state = Filter.State.no_match;
 
     // LOG_TAGS=""
-    var filter = Filter{ .state = match_needed_state };
-    try testNextState(filter, "_override", Filter.State.print);
-    try testNextState(filter, "*", Filter.State.print);
-    try testNextState(filter, "some_tag", Filter.State.match_needed);
+    var filter = Filter{ .state = no_match_state };
+    try testNextState(filter, "_override", Filter.State.override);
+    try testNextState(filter, "*", Filter.State.override);
+    try testNextState(filter, "some_tag", Filter.State.no_match);
 
     // LOG_TAGS="some_tag"
-    filter = Filter{ .state = match_needed_state, .include_list = Digest.tags(.{"some_tag"}) };
-    try testNextState(filter, "some_tag", Filter.State.matched);
-    try testNextState(filter, "other_tag", Filter.State.match_needed);
+    filter = Filter{ .state = no_match_state, .include_list = Digest.tags(.{"some_tag"}) };
+    try testNextState(filter, "some_tag", Filter.State.match);
+    try testNextState(filter, "other_tag", Filter.State.no_match);
 
     // LOG_TAGS="-some_tag"
-    filter = Filter{ .state = match_needed_state, .exclude_list = Digest.tags(.{"some_tag"}) };
-    try testNextState(filter, "some_tag", Filter.State.excluded);
-    try testNextState(filter, "other_tag", Filter.State.match_needed);
+    filter = Filter{ .state = no_match_state, .exclude_list = Digest.tags(.{"some_tag"}) };
+    try testNextState(filter, "some_tag", Filter.State.exclude);
+    try testNextState(filter, "other_tag", Filter.State.no_match);
 
     // LOG_TAGS="-some_tag,some_tag"
-    filter = Filter{ .state = match_needed_state, .include_list = Digest.tags(.{"some_tag"}), .exclude_list = Digest.tags(.{"some_tag"}) };
-    try testNextState(filter, "some_tag", Filter.State.excluded);
-    try testNextState(filter, "other_tag", Filter.State.match_needed);
+    filter = Filter{ .state = no_match_state, .include_list = Digest.tags(.{"some_tag"}), .exclude_list = Digest.tags(.{"some_tag"}) };
+    try testNextState(filter, "some_tag", Filter.State.exclude);
+    try testNextState(filter, "other_tag", Filter.State.no_match);
 }
 
 test "Next State; Matched State" {
-    const matched_state = Filter.State.matched;
+    const match_state = Filter.State.match;
 
     // LOG_TAGS=""
-    var filter = Filter{ .state = matched_state };
-    try testNextState(filter, "_override", Filter.State.print);
-    try testNextState(filter, "*", Filter.State.print);
-    try testNextState(filter, "some_tag", Filter.State.matched);
+    var filter = Filter{ .state = match_state };
+    try testNextState(filter, "_override", Filter.State.override);
+    try testNextState(filter, "*", Filter.State.override);
+    try testNextState(filter, "some_tag", Filter.State.match);
 
     // LOG_TAGS="some_tag"
-    filter = Filter{ .state = matched_state, .include_list = Digest.tags(.{"some_tag"}) };
-    try testNextState(filter, "some_tag", Filter.State.matched);
-    try testNextState(filter, "other_tag", Filter.State.matched);
+    filter = Filter{ .state = match_state, .include_list = Digest.tags(.{"some_tag"}) };
+    try testNextState(filter, "some_tag", Filter.State.match);
+    try testNextState(filter, "other_tag", Filter.State.match);
 
     // LOG_TAGS="-some_tag"
-    filter = Filter{ .state = matched_state, .exclude_list = Digest.tags(.{"some_tag"}) };
-    try testNextState(filter, "some_tag", Filter.State.excluded);
-    try testNextState(filter, "other_tag", Filter.State.matched);
+    filter = Filter{ .state = match_state, .exclude_list = Digest.tags(.{"some_tag"}) };
+    try testNextState(filter, "some_tag", Filter.State.exclude);
+    try testNextState(filter, "other_tag", Filter.State.match);
 
     // LOG_TAGS="-some_tag,some_tag"
-    filter = Filter{ .state = matched_state, .include_list = Digest.tags(.{"some_tag"}), .exclude_list = Digest.tags(.{"some_tag"}) };
-    try testNextState(filter, "some_tag", Filter.State.excluded);
-    try testNextState(filter, "other_tag", Filter.State.matched);
+    filter = Filter{ .state = match_state, .include_list = Digest.tags(.{"some_tag"}), .exclude_list = Digest.tags(.{"some_tag"}) };
+    try testNextState(filter, "some_tag", Filter.State.exclude);
+    try testNextState(filter, "other_tag", Filter.State.match);
 }
 
 test "Next State; Excluded State" {
-    const excluded_state = Filter.State.excluded;
+    const excluded_state = Filter.State.exclude;
 
     // LOG_TAGS=""
     var filter = Filter{ .state = excluded_state };
-    try testNextState(filter, "_override", Filter.State.print);
-    try testNextState(filter, "*", Filter.State.print);
-    try testNextState(filter, "some_tag", Filter.State.excluded);
+    try testNextState(filter, "_override", Filter.State.override);
+    try testNextState(filter, "*", Filter.State.override);
+    try testNextState(filter, "some_tag", Filter.State.exclude);
 
     // LOG_TAGS="some_tag"
     filter = Filter{ .state = excluded_state, .include_list = Digest.tags(.{"some_tag"}) };
-    try testNextState(filter, "some_tag", Filter.State.excluded);
-    try testNextState(filter, "other_tag", Filter.State.excluded);
+    try testNextState(filter, "some_tag", Filter.State.exclude);
+    try testNextState(filter, "other_tag", Filter.State.exclude);
 
     // LOG_TAGS="-some_tag"
     filter = Filter{ .state = excluded_state, .exclude_list = Digest.tags(.{"some_tag"}) };
-    try testNextState(filter, "some_tag", Filter.State.excluded);
-    try testNextState(filter, "other_tag", Filter.State.excluded);
+    try testNextState(filter, "some_tag", Filter.State.exclude);
+    try testNextState(filter, "other_tag", Filter.State.exclude);
 
     // LOG_TAGS="-some_tag,some_tag"
     filter = Filter{ .state = excluded_state, .include_list = Digest.tags(.{"some_tag"}), .exclude_list = Digest.tags(.{"some_tag"}) };
-    try testNextState(filter, "some_tag", Filter.State.excluded);
-    try testNextState(filter, "other_tag", Filter.State.excluded);
+    try testNextState(filter, "some_tag", Filter.State.exclude);
+    try testNextState(filter, "other_tag", Filter.State.exclude);
 }
 
 test "Next State; Print State" {
-    const print_state = Filter.State.print;
+    const print_state = Filter.State.override;
 
     // LOG_TAGS=""
     var filter = Filter{ .state = print_state };
-    try testNextState(filter, "_override", Filter.State.print);
-    try testNextState(filter, "*", Filter.State.print);
-    try testNextState(filter, "some_tag", Filter.State.print);
+    try testNextState(filter, "_override", Filter.State.override);
+    try testNextState(filter, "*", Filter.State.override);
+    try testNextState(filter, "some_tag", Filter.State.override);
 
     // LOG_TAGS="some_tag"
     filter = Filter{ .state = print_state, .include_list = Digest.tags(.{"some_tag"}) };
-    try testNextState(filter, "some_tag", Filter.State.print);
-    try testNextState(filter, "other_tag", Filter.State.print);
+    try testNextState(filter, "some_tag", Filter.State.override);
+    try testNextState(filter, "other_tag", Filter.State.override);
 
     // LOG_TAGS="-some_tag"
     filter = Filter{ .state = print_state, .exclude_list = Digest.tags(.{"some_tag"}) };
-    try testNextState(filter, "some_tag", Filter.State.print);
-    try testNextState(filter, "other_tag", Filter.State.print);
+    try testNextState(filter, "some_tag", Filter.State.override);
+    try testNextState(filter, "other_tag", Filter.State.override);
 
     // LOG_TAGS="-some_tag,some_tag"
     filter = Filter{ .state = print_state, .include_list = Digest.tags(.{"some_tag"}), .exclude_list = Digest.tags(.{"some_tag"}) };
-    try testNextState(filter, "some_tag", Filter.State.print);
-    try testNextState(filter, "other_tag", Filter.State.print);
+    try testNextState(filter, "some_tag", Filter.State.override);
+    try testNextState(filter, "other_tag", Filter.State.override);
 }
