@@ -46,7 +46,7 @@ test "Next State; Untagged State" {
     try test_apply_tag(&tag_filter, "other_tag", TagFilter.State.no_match);
 }
 
-test "Next State; Match Needed State" {
+test "Next State; No Match State" {
     const no_match_state = TagFilter.State.no_match;
 
     // LOG_TAGS=""
@@ -71,7 +71,7 @@ test "Next State; Match Needed State" {
     try test_apply_tag(&tag_filter, "other_tag", TagFilter.State.no_match);
 }
 
-test "Next State; Matched State" {
+test "Next State; Match State" {
     const match_state = TagFilter.State.match;
 
     // LOG_TAGS=""
@@ -96,7 +96,7 @@ test "Next State; Matched State" {
     try test_apply_tag(&tag_filter, "other_tag", TagFilter.State.match);
 }
 
-test "Next State; Excluded State" {
+test "Next State; Exclude State" {
     const excluded_state = TagFilter.State.exclude;
 
     // LOG_TAGS=""
@@ -121,7 +121,7 @@ test "Next State; Excluded State" {
     try test_apply_tag(&tag_filter, "other_tag", TagFilter.State.exclude);
 }
 
-test "Next State; Print State" {
+test "Next State; Override State" {
     const print_state = TagFilter.State.override;
 
     // LOG_TAGS=""
