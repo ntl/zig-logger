@@ -1,3 +1,3 @@
-pub const Tagging = struct {
-    pub usingnamespace @import("./tagging/filter.zig");
+pub const Filter = struct {
+    pub usingnamespace @import("./filter/tag_filter.zig");
 };

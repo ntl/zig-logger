@@ -1,6 +1,6 @@
 const std = @import("std");
 
-pub const Filter = struct {
+pub const TagFilter = struct {
     state: State = State.untagged,
 
     exclude_list: []const u64 = &.{},
@@ -8,26 +8,31 @@ pub const Filter = struct {
 
     allocator: ?std.mem.Allocator = null,
 
-    pub fn build() !Filter {
-        const allocator = std.heap.page_allocator;
+    const BuildArguments = struct {
+        log_tags: ?[]const u8 = null,
+        allocator: std.mem.Allocator = std.heap.page_allocator,
+    };
+    pub fn build(args: BuildArguments) !TagFilter {
+        const allocator = args.allocator;
 
-        const log_tags_setting_set = try std.process.hasEnvVar(allocator, "LOG_TAGS");
-        const log_tags_setting = if (log_tags_setting_set) try std.process.getEnvVarOwned(allocator, "LOG_TAGS") else "";
+        const log_tags = args.log_tags orelse env_var: {
+            if (try std.process.hasEnvVar(allocator, "LOG_TAGS")) {
+                break :env_var try std.process.getEnvVarOwned(allocator, "LOG_TAGS");
+            } else {
+                break :env_var "";
+            }
+        };
 
-        if (init(log_tags_setting, allocator)) |filter| {
-            return filter;
-        } else |err| {
-            return err;
+        if (log_tags.len == 0) {
+            return TagFilter{};
         }
-    }
 
-    pub fn init(log_tags_setting: []const u8, allocator: std.mem.Allocator) error{OutOfMemory}!Filter {
-        var initial_state = if (log_tags_setting.len == 0) State.untagged else State.no_match;
+        var initial_state = State.no_match;
 
         var include_list = std.ArrayList(u64).init(allocator);
         var exclude_list = std.ArrayList(u64).init(allocator);
 
-        var iterator = std.mem.tokenize(u8, log_tags_setting, ", ");
+        var iterator = std.mem.tokenize(u8, log_tags, ", ");
 
         while (iterator.next()) |tag| {
             if (tag[0] == '_') {
@@ -41,16 +46,16 @@ pub const Filter = struct {
                 }
             } else if (tag[0] == '-') {
                 if (tag.len > 1) {
-                    const digest = tag_digest(tag[1..]);
-                    try exclude_list.append(digest);
+                    const tag_digest = digest(tag[1..]);
+                    try exclude_list.append(tag_digest);
                 }
             } else {
-                const digest = tag_digest(tag);
-                try include_list.append(digest);
+                const tag_digest = digest(tag);
+                try include_list.append(tag_digest);
             }
         }
 
-        return Filter{
+        return TagFilter{
             .state = initial_state,
             .include_list = include_list.items,
             .exclude_list = exclude_list.items,
@@ -58,37 +63,37 @@ pub const Filter = struct {
         };
     }
 
-    pub fn deinit(self: *Filter) void {
+    pub fn destroy(self: *TagFilter) void {
         if (self.allocator) |allocator| {
             allocator.free(self.include_list);
             allocator.free(self.exclude_list);
         }
     }
 
-    pub fn specialize(self: Filter, tags: []const []const u8) Filter {
-        var filter = Filter{
+    pub fn specialize(self: TagFilter, tags: []const []const u8) TagFilter {
+        var tag_filter = TagFilter{
             .state = self.state,
             .include_list = self.include_list,
             .exclude_list = self.exclude_list,
         };
 
         for (tags) |tag| {
-            filter.addTag(tag);
+            tag_filter.addTag(tag);
         }
 
-        return filter;
+        return tag_filter;
     }
 
-    fn addTag(self: *Filter, tag: []const u8) void {
-        const digest = tag_digest(tag);
+    fn addTag(self: *TagFilter, tag: []const u8) void {
+        const tag_digest = digest(tag);
 
-        self.state = self.nextState(digest);
+        self.state = self.nextState(tag_digest);
     }
 
-    pub fn nextState(self: Filter, digest: u64) State {
+    pub fn nextState(self: TagFilter, tag_digest: u64) State {
         if (self.state == State.override) {
             return State.override;
-        } else if (digest == override_digest or digest == override_short_digest) {
+        } else if (tag_digest == override_digest or tag_digest == override_short_digest) {
             return State.override;
         }
 
@@ -96,7 +101,7 @@ pub const Filter = struct {
             return State.exclude;
         } else {
             for (self.exclude_list) |exclude_digest| {
-                if (digest == exclude_digest) {
+                if (tag_digest == exclude_digest) {
                     return State.exclude;
                 }
             }
@@ -106,7 +111,7 @@ pub const Filter = struct {
             return State.match;
         } else {
             for (self.include_list) |include_digest| {
-                if (digest == include_digest) {
+                if (tag_digest == include_digest) {
                     return State.match;
                 }
             }
@@ -116,12 +121,12 @@ pub const Filter = struct {
     }
 
     const digest_hash_seed = 0;
-    pub fn tag_digest(tag: []const u8) u64 {
+    pub fn digest(tag: []const u8) u64 {
         return std.hash.Wyhash.hash(digest_hash_seed, tag);
     }
 
-    const override_digest = tag_digest("_override");
-    const override_short_digest = tag_digest("*");
+    const override_digest = digest("_override");
+    const override_short_digest = digest("*");
 
     pub const State = enum {
         untagged,
