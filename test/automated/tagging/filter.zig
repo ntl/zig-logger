@@ -2,7 +2,6 @@ const std = @import("std");
 
 const Log = @import("log");
 const Filter = Log.Tagging.Filter;
-const Digest = Log.Tagging.Digest;
 
 test "Initial State" {
     const filter = Filter{};
@@ -14,6 +13,15 @@ test "Build" {
     var filter = try Filter.build();
 
     try std.testing.expect(@TypeOf(filter) == Filter);
+}
+
+test "Digest" {
+    const digest_1: u64 = Filter.tag_digest("some_tag");
+    const digest_2: u64 = Filter.tag_digest("some_tag");
+    const digest_3: u64 = Filter.tag_digest("other_tag");
+
+    try std.testing.expect(digest_1 == digest_2);
+    try std.testing.expect(digest_1 != digest_3);
 }
 
 test "State Machine" {

@@ -1,7 +1,5 @@
 const std = @import("std");
 
-const Digest = @import("./digest.zig");
-
 pub const Filter = struct {
     state: State = State.untagged,
 
@@ -43,12 +41,12 @@ pub const Filter = struct {
                 }
             } else if (tag[0] == '-') {
                 if (tag.len > 1) {
-                    const tag_digest = Digest.tag(tag[1..]);
-                    try exclude_list.append(tag_digest);
+                    const digest = tag_digest(tag[1..]);
+                    try exclude_list.append(digest);
                 }
             } else {
-                const tag_digest = Digest.tag(tag);
-                try include_list.append(tag_digest);
+                const digest = tag_digest(tag);
+                try include_list.append(digest);
             }
         }
 
@@ -77,7 +75,7 @@ pub const Filter = struct {
     }
 
     fn addTag(self: *Filter, tag: []const u8) void {
-        const digest = Digest.tag(tag);
+        const digest = tag_digest(tag);
 
         self.state = self.nextState(digest);
     }
@@ -112,8 +110,13 @@ pub const Filter = struct {
         return State.no_match;
     }
 
-    const override_digest = Digest.tag("_override");
-    const override_short_digest = Digest.tag("*");
+    const digest_hash_seed = 0;
+    pub fn tag_digest(tag: []const u8) u64 {
+        return std.hash.Wyhash.hash(digest_hash_seed, tag);
+    }
+
+    const override_digest = tag_digest("_override");
+    const override_short_digest = tag_digest("*");
 
     pub const State = enum { untagged, no_match, match, exclude, override };
 };

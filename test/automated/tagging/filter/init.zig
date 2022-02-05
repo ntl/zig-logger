@@ -1,7 +1,6 @@
 const std = @import("std");
 
 const Filter = @import("log").Tagging.Filter;
-const Digest = @import("log").Tagging.Digest;
 
 test "LOG_TAGS=''" {
     var filter = try Filter.init("", std.testing.allocator);
@@ -19,7 +18,7 @@ test "LOG_TAGS='some_tag'" {
     try std.testing.expect(filter.state == Filter.State.no_match);
 
     try std.testing.expect(filter.include_list.len == 1);
-    try std.testing.expect(filter.include_list[0] == Digest.tag("some_tag"));
+    try std.testing.expect(filter.include_list[0] == Filter.tag_digest("some_tag"));
 }
 
 test "LOG_TAGS='some_tag,other_tag'" {
@@ -29,8 +28,8 @@ test "LOG_TAGS='some_tag,other_tag'" {
     try std.testing.expect(filter.state == Filter.State.no_match);
 
     try std.testing.expect(filter.include_list.len == 2);
-    try std.testing.expect(filter.include_list[0] == Digest.tag("some_tag"));
-    try std.testing.expect(filter.include_list[1] == Digest.tag("other_tag"));
+    try std.testing.expect(filter.include_list[0] == Filter.tag_digest("some_tag"));
+    try std.testing.expect(filter.include_list[1] == Filter.tag_digest("other_tag"));
 }
 
 test "LOG_TAGS='-some_tag'" {
@@ -40,7 +39,7 @@ test "LOG_TAGS='-some_tag'" {
     try std.testing.expect(filter.state == Filter.State.no_match);
 
     try std.testing.expect(filter.exclude_list.len == 1);
-    try std.testing.expect(filter.exclude_list[0] == Digest.tag("some_tag"));
+    try std.testing.expect(filter.exclude_list[0] == Filter.tag_digest("some_tag"));
 }
 
 test "LOG_TAGS='some_tag,-other_tag'" {
@@ -48,10 +47,10 @@ test "LOG_TAGS='some_tag,-other_tag'" {
     defer filter.deinit();
 
     try std.testing.expect(filter.include_list.len == 1);
-    try std.testing.expect(filter.include_list[0] == Digest.tag("some_tag"));
+    try std.testing.expect(filter.include_list[0] == Filter.tag_digest("some_tag"));
 
     try std.testing.expect(filter.exclude_list.len == 1);
-    try std.testing.expect(filter.exclude_list[0] == Digest.tag("other_tag"));
+    try std.testing.expect(filter.exclude_list[0] == Filter.tag_digest("other_tag"));
 
 }
 
@@ -111,7 +110,7 @@ test "Tokenization" {
     defer filter.deinit();
 
     try std.testing.expect(filter.include_list.len == 2);
-    try std.testing.expect(filter.include_list[0] == Digest.tag("some_tag"));
-    try std.testing.expect(filter.include_list[1] == Digest.tag("other_tag"));
+    try std.testing.expect(filter.include_list[0] == Filter.tag_digest("some_tag"));
+    try std.testing.expect(filter.include_list[1] == Filter.tag_digest("other_tag"));
     try std.testing.expect(filter.exclude_list.len == 0);
 }

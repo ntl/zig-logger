@@ -1,7 +1,6 @@
 const std = @import("std");
 
 const Filter = @import("log").Tagging.Filter;
-const Digest = @import("log").Tagging.Digest;
 
 test "Produces New Filter With Identical Include/Exclude Lists" {
     var source_filter = try Filter.init("some_tag,-other_tag", std.testing.allocator);
