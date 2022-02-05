@@ -107,8 +107,6 @@ test "LOG_TAGS='_all'" {
     defer tag_filter.destroy();
 
     try std.testing.expect(tag_filter.state == TagFilter.State.override);
-    try std.testing.expect(tag_filter.include_list.len == 0);
-    try std.testing.expect(tag_filter.exclude_list.len == 0);
 }
 
 test "LOG_TAGS='some_tag,-other_tag,_all,yet_another_tag'" {
@@ -119,8 +117,30 @@ test "LOG_TAGS='some_tag,-other_tag,_all,yet_another_tag'" {
     defer tag_filter.destroy();
 
     try std.testing.expect(tag_filter.state == TagFilter.State.override);
+}
+
+test "LOG_TAGS='_not_excluded'" {
+    var tag_filter = try TagFilter.build(.{
+        .log_tags = "_not_excluded",
+        .allocator = std.testing.allocator
+    });
+    defer tag_filter.destroy();
+
+    try std.testing.expect(tag_filter.state == TagFilter.State.match);
     try std.testing.expect(tag_filter.include_list.len == 0);
     try std.testing.expect(tag_filter.exclude_list.len == 0);
+}
+
+test "LOG_TAGS='some_tag,-other_tag,_not_excluded,yet_another_tag'" {
+    var tag_filter = try TagFilter.build(.{
+        .log_tags = "some_tag,-other_tag,_not_excluded,yet_another_tag",
+        .allocator = std.testing.allocator
+    });
+    defer tag_filter.destroy();
+
+    try std.testing.expect(tag_filter.state == TagFilter.State.match);
+    try std.testing.expect(tag_filter.include_list.len == 2);
+    try std.testing.expect(tag_filter.exclude_list.len == 1);
 }
 
 test "LOG_TAGS='_unknown_special_tag'" {

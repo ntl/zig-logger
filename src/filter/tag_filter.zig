@@ -37,11 +37,11 @@ pub const TagFilter = struct {
         while (iterator.next()) |tag| {
             if (tag[0] == '_') {
                 if (std.mem.eql(u8, tag, "_all")) {
-                    include_list.shrinkAndFree(0);
-                    exclude_list.shrinkAndFree(0);
                     initial_state = State.override;
                     break;
-                } else if (std.mem.eql(u8, tag, "_untagged")) {
+                } else if (std.mem.eql(u8, tag, "_not_excluded")) {
+                    initial_state = State.match;
+                } else if (std.mem.eql(u8, tag, "_untagged") and initial_state != State.match) {
                     initial_state = State.untagged;
                 }
             } else if (tag[0] == '-') {

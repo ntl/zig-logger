@@ -5,7 +5,7 @@ const TagFilter = @import("log").Filter.TagFilter;
 const some_tag = TagFilter.digest("some_tag");
 const other_tag = TagFilter.digest("other_tag");
 const another_tag = TagFilter.digest("another_tag");
-const override_tag = TagFilter.digest("*");
+const override_tag = TagFilter.digest("_override");
 
 test "State: Untagged" {
     const tag_filter = TagFilter{
