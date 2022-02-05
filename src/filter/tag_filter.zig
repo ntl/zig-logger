@@ -70,6 +70,28 @@ pub const TagFilter = struct {
         }
     }
 
+    pub fn write_predicate(self: TagFilter, tag_digests: []const u64) bool {
+        var state = self.state;
+
+        if (state == State.override) {
+            return true;
+        }
+
+        for (tag_digests) |tag_digest| {
+            state = next_state(tag_digest, state, self.include_list, self.exclude_list);
+
+            if (state == State.override) {
+                return true;
+            }
+        }
+
+        if (state == State.no_match or state == State.exclude) {
+            return false;
+        } else {
+            return true;
+        }
+    }
+
     pub fn specialize(self: TagFilter, tags: []const []const u8) TagFilter {
         var tag_filter = TagFilter{
             .state = self.state,
@@ -78,39 +100,39 @@ pub const TagFilter = struct {
         };
 
         for (tags) |tag| {
-            tag_filter.addTag(tag);
+            const tag_digest = digest(tag);
+
+            tag_filter.apply(tag_digest);
         }
 
         return tag_filter;
     }
 
-    fn addTag(self: *TagFilter, tag: []const u8) void {
-        const tag_digest = digest(tag);
-
-        self.state = self.nextState(tag_digest);
+    pub fn apply(self: *TagFilter, tag_digest: u64) void {
+        self.state = next_state(tag_digest, self.state, self.include_list, self.exclude_list);
     }
 
-    pub fn nextState(self: TagFilter, tag_digest: u64) State {
-        if (self.state == State.override) {
+    fn next_state(tag_digest: u64, state: State, include_list: []const u64, exclude_list: []const u64) State {
+        if (state == State.override) {
             return State.override;
         } else if (tag_digest == override_digest or tag_digest == override_short_digest) {
             return State.override;
         }
 
-        if (self.state == State.exclude) {
+        if (state == State.exclude) {
             return State.exclude;
         } else {
-            for (self.exclude_list) |exclude_digest| {
+            for (exclude_list) |exclude_digest| {
                 if (tag_digest == exclude_digest) {
                     return State.exclude;
                 }
             }
         }
 
-        if (self.state == State.match) {
+        if (state == State.match) {
             return State.match;
         } else {
-            for (self.include_list) |include_digest| {
+            for (include_list) |include_digest| {
                 if (tag_digest == include_digest) {
                     return State.match;
                 }
@@ -120,6 +142,7 @@ pub const TagFilter = struct {
         return State.no_match;
     }
 
+    // TODO: Research a more appropriate hashing algorithm or seed
     const digest_hash_seed = 0;
     pub fn digest(tag: []const u8) u64 {
         return std.hash.Wyhash.hash(digest_hash_seed, tag);
