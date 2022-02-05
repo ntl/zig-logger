@@ -50,7 +50,12 @@ pub const Filter = struct {
             }
         }
 
-        return Filter{ .state = initial_state, .include_list = include_list.items, .exclude_list = exclude_list.items, .allocator = allocator };
+        return Filter{
+            .state = initial_state,
+            .include_list = include_list.items,
+            .exclude_list = exclude_list.items,
+            .allocator = allocator,
+        };
     }
 
     pub fn deinit(self: *Filter) void {
@@ -61,10 +66,10 @@ pub const Filter = struct {
     }
 
     pub fn specialize(self: Filter, tags: []const []const u8) Filter {
-        var filter = Filter {
+        var filter = Filter{
             .state = self.state,
             .include_list = self.include_list,
-            .exclude_list = self.exclude_list
+            .exclude_list = self.exclude_list,
         };
 
         for (tags) |tag| {
@@ -118,5 +123,11 @@ pub const Filter = struct {
     const override_digest = tag_digest("_override");
     const override_short_digest = tag_digest("*");
 
-    pub const State = enum { untagged, no_match, match, exclude, override };
+    pub const State = enum {
+        untagged,
+        no_match,
+        match,
+        exclude,
+        override,
+    };
 };
