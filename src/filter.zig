@@ -3,10 +3,10 @@ const std = @import("std");
 pub const Filter = struct {
     logger_level: Level = .info,
 
-    state: State = .untagged,
+    tag_state: TagState = .untagged,
 
-    exclude_list: []const u64 = &.{},
-    include_list: []const u64 = &.{},
+    exclude_tags: []const u64 = &.{},
+    include_tags: []const u64 = &.{},
 
     allocator: ?std.mem.Allocator = null,
 
@@ -18,14 +18,15 @@ pub const Filter = struct {
     } || std.process.GetEnvVarOwnedError;
 
     const BuildArguments = struct {
-        log_level: ?[]const u8 = null,
-        log_tags: ?[]const u8 = null,
+        logger_level: ?[]const u8 = null,
+        logger_tags: ?[]const u8 = null,
         allocator: std.mem.Allocator = std.heap.page_allocator,
     };
+
     pub fn build(args: BuildArguments) BuildError!Filter {
         const allocator = args.allocator;
 
-        const log_level_str = args.log_level orelse env_var: {
+        const log_level_str = args.logger_level orelse env_var: {
             if (try std.process.hasEnvVar(allocator, "LOG_LEVEL")) {
                 break :env_var try std.process.getEnvVarOwned(allocator, "LOG_LEVEL");
             } else {
@@ -44,7 +45,7 @@ pub const Filter = struct {
             }
         };
 
-        const log_tags = args.log_tags orelse env_var: {
+        const logger_tags = args.logger_tags orelse env_var: {
             if (try std.process.hasEnvVar(allocator, "LOG_TAGS")) {
                 break :env_var try std.process.getEnvVarOwned(allocator, "LOG_TAGS");
             } else {
@@ -52,47 +53,47 @@ pub const Filter = struct {
             }
         };
 
-        var initial_state: State = if (log_tags.len == 0) .untagged else .no_match;
+        var initial_tag_state: TagState = if (logger_tags.len == 0) .untagged else .no_match;
 
-        var include_list = std.ArrayList(u64).init(allocator);
-        var exclude_list = std.ArrayList(u64).init(allocator);
+        var include_tags = std.ArrayList(u64).init(allocator);
+        var exclude_tags = std.ArrayList(u64).init(allocator);
 
-        var iterator = std.mem.tokenize(u8, log_tags, ", ");
+        var tag_iterator = std.mem.tokenize(u8, logger_tags, ", ");
 
-        while (iterator.next()) |tag| {
+        while (tag_iterator.next()) |tag| {
             if (tag[0] == '_') {
                 if (std.mem.eql(u8, tag, "_all")) {
-                    initial_state = .override;
+                    initial_tag_state = .override;
                     break;
                 } else if (std.mem.eql(u8, tag, "_not_excluded")) {
-                    initial_state = .match;
-                } else if (std.mem.eql(u8, tag, "_untagged") and initial_state != .match) {
-                    initial_state = .untagged;
+                    initial_tag_state = .match;
+                } else if (std.mem.eql(u8, tag, "_untagged") and initial_tag_state != .match) {
+                    initial_tag_state = .untagged;
                 }
             } else if (tag[0] == '-') {
                 if (tag.len > 1) {
-                    const tag_digest = digest(tag[1..]);
-                    try exclude_list.append(tag_digest);
+                    const digest = tag_digest(tag[1..]);
+                    try exclude_tags.append(digest);
                 }
             } else {
-                const tag_digest = digest(tag);
-                try include_list.append(tag_digest);
+                const digest = tag_digest(tag);
+                try include_tags.append(digest);
             }
         }
 
         return Filter{
             .logger_level = logger_level,
-            .state = initial_state,
-            .include_list = include_list.items,
-            .exclude_list = exclude_list.items,
+            .tag_state = initial_tag_state,
+            .include_tags = include_tags.items,
+            .exclude_tags = exclude_tags.items,
             .allocator = allocator,
         };
     }
 
     pub fn destroy(self: *Filter) void {
         if (self.allocator) |allocator| {
-            allocator.free(self.include_list);
-            allocator.free(self.exclude_list);
+            allocator.free(self.include_tags);
+            allocator.free(self.exclude_tags);
         }
     }
 
@@ -101,21 +102,21 @@ pub const Filter = struct {
             return false;
         }
 
-        var state = self.state;
+        var tag_state = self.tag_state;
 
-        if (state == .override) {
+        if (tag_state == .override) {
             return true;
         }
 
-        for (tag_digests) |tag_digest| {
-            state = next_state(tag_digest, state, self.include_list, self.exclude_list);
+        for (tag_digests) |digest| {
+            tag_state = next_tag_state(digest, tag_state, self.include_tags, self.exclude_tags);
 
-            if (state == .override) {
+            if (tag_state == .override) {
                 return true;
             }
         }
 
-        if (state == .no_match or state == .exclude) {
+        if (tag_state == .no_match or tag_state == .exclude) {
             return false;
         } else {
             return true;
@@ -124,45 +125,51 @@ pub const Filter = struct {
 
     pub fn specialize(self: Filter, tags: []const []const u8) Filter {
         var filter = Filter{
-            .state = self.state,
-            .include_list = self.include_list,
-            .exclude_list = self.exclude_list,
+            .logger_level = self.logger_level,
+            .tag_state = self.tag_state,
+            .include_tags = self.include_tags,
+            .exclude_tags = self.exclude_tags,
         };
 
         for (tags) |tag| {
-            const tag_digest = digest(tag);
-            filter.apply(tag_digest);
+            const digest = tag_digest(tag);
+            filter.apply_tag(digest);
         }
 
         return filter;
     }
 
-    pub fn apply(self: *Filter, tag_digest: u64) void {
-        self.state = next_state(tag_digest, self.state, self.include_list, self.exclude_list);
+    pub fn apply_tag(self: *Filter, digest: u64) void {
+        self.tag_state = next_tag_state(
+            digest,
+            self.tag_state,
+            self.include_tags,
+            self.exclude_tags,
+        );
     }
 
-    fn next_state(tag_digest: u64, state: State, include_list: []const u64, exclude_list: []const u64) State {
-        if (state == .override) {
+    fn next_tag_state(digest: u64, tag_state: TagState, include_tags: []const u64, exclude_tags: []const u64) TagState {
+        if (tag_state == .override) {
             return .override;
-        } else if (tag_digest == override_digest or tag_digest == override_short_digest) {
+        } else if (digest == override_digest or digest == override_short_digest) {
             return .override;
         }
 
-        if (state == .exclude) {
+        if (tag_state == .exclude) {
             return .exclude;
         } else {
-            for (exclude_list) |exclude_digest| {
-                if (tag_digest == exclude_digest) {
+            for (exclude_tags) |exclude_digest| {
+                if (digest == exclude_digest) {
                     return .exclude;
                 }
             }
         }
 
-        if (state == .match) {
+        if (tag_state == .match) {
             return .match;
         } else {
-            for (include_list) |include_digest| {
-                if (tag_digest == include_digest) {
+            for (include_tags) |include_digest| {
+                if (digest == include_digest) {
                     return .match;
                 }
             }
@@ -172,15 +179,15 @@ pub const Filter = struct {
     }
 
     // TODO: Research a more appropriate hashing algorithm or seed
-    const digest_hash_seed = 0;
-    pub fn digest(tag: []const u8) u64 {
-        return std.hash.Wyhash.hash(digest_hash_seed, tag);
+    const tag_digest_hash_seed = 0;
+    pub fn tag_digest(tag: []const u8) u64 {
+        return std.hash.Wyhash.hash(tag_digest_hash_seed, tag);
     }
 
-    const override_digest = digest("_override");
-    const override_short_digest = digest("*");
+    const override_digest = tag_digest("_override");
+    const override_short_digest = tag_digest("*");
 
-    pub const State = enum {
+    pub const TagState = enum {
         untagged,
         no_match,
         match,

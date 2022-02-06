@@ -2,17 +2,17 @@ const std = @import("std");
 
 const Filter = @import("log").Filter;
 
-const some_tag = Filter.digest("some_tag");
-const other_tag = Filter.digest("other_tag");
-const another_tag = Filter.digest("another_tag");
-const override_tag = Filter.digest("_override");
+const some_tag = Filter.tag_digest("some_tag");
+const other_tag = Filter.tag_digest("other_tag");
+const another_tag = Filter.tag_digest("another_tag");
+const override_tag = Filter.tag_digest("_override");
 
 test "Message Level" {
     const filter = Filter{
         .logger_level = .info,
-        .state = .untagged,
-        .include_list = &.{ some_tag },
-        .exclude_list = &.{ other_tag },
+        .tag_state = .untagged,
+        .include_tags = &.{ some_tag },
+        .exclude_tags = &.{ other_tag },
     };
 
     try std.testing.expect(filter.write_predicate(.fatal, &.{}) == true);
@@ -29,9 +29,9 @@ test "Message Level" {
 
 test "State: Untagged" {
     const filter = Filter{
-        .state = .untagged,
-        .include_list = &.{ some_tag },
-        .exclude_list = &.{ other_tag },
+        .tag_state = .untagged,
+        .include_tags = &.{ some_tag },
+        .exclude_tags = &.{ other_tag },
     };
 
     try std.testing.expect(filter.write_predicate(.info, &.{}) == true);
@@ -43,9 +43,9 @@ test "State: Untagged" {
 
 test "State: No Match" {
     const filter = Filter{
-        .state = .no_match,
-        .include_list = &.{ some_tag },
-        .exclude_list = &.{ other_tag },
+        .tag_state = .no_match,
+        .include_tags = &.{ some_tag },
+        .exclude_tags = &.{ other_tag },
     };
 
     try std.testing.expect(filter.write_predicate(.info, &.{}) == false);
@@ -57,9 +57,9 @@ test "State: No Match" {
 
 test "State: Match" {
     const filter = Filter{
-        .state = .match,
-        .include_list = &.{ some_tag },
-        .exclude_list = &.{ other_tag },
+        .tag_state = .match,
+        .include_tags = &.{ some_tag },
+        .exclude_tags = &.{ other_tag },
     };
 
     try std.testing.expect(filter.write_predicate(.info, &.{}) == true);
@@ -71,9 +71,9 @@ test "State: Match" {
 
 test "State: Exclude" {
     const filter = Filter{
-        .state = .exclude,
-        .include_list = &.{ some_tag },
-        .exclude_list = &.{ other_tag },
+        .tag_state = .exclude,
+        .include_tags = &.{ some_tag },
+        .exclude_tags = &.{ other_tag },
     };
 
     try std.testing.expect(filter.write_predicate(.info, &.{}) == false);
@@ -83,9 +83,9 @@ test "State: Exclude" {
 
 test "State: Override" {
     const filter = Filter{
-        .state = .override,
-        .include_list = &.{ some_tag },
-        .exclude_list = &.{ other_tag },
+        .tag_state = .override,
+        .include_tags = &.{ some_tag },
+        .exclude_tags = &.{ other_tag },
     };
 
     try std.testing.expect(filter.write_predicate(.info, &.{ some_tag, other_tag }) == true);

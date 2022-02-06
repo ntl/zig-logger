@@ -4,7 +4,7 @@ const Filter = @import("log").Filter;
 
 test "No LOG_LEVEL" {
     var filter = try Filter.build(.{
-        .log_level = null,
+        .logger_level = null,
         .allocator = std.testing.allocator,
     });
     defer filter.destroy();
@@ -14,7 +14,7 @@ test "No LOG_LEVEL" {
 
 test "LOG_LEVEL='fatal'" {
     var filter = try Filter.build(.{
-        .log_level = "fatal",
+        .logger_level = "fatal",
         .allocator = std.testing.allocator,
     });
     defer filter.destroy();
@@ -24,7 +24,7 @@ test "LOG_LEVEL='fatal'" {
 
 test "LOG_LEVEL='error'" {
     var filter = try Filter.build(.{
-        .log_level = "error",
+        .logger_level = "error",
         .allocator = std.testing.allocator,
     });
     defer filter.destroy();
@@ -34,7 +34,7 @@ test "LOG_LEVEL='error'" {
 
 test "LOG_LEVEL='warn'" {
     var filter = try Filter.build(.{
-        .log_level = "warn",
+        .logger_level = "warn",
         .allocator = std.testing.allocator,
     });
     defer filter.destroy();
@@ -44,7 +44,7 @@ test "LOG_LEVEL='warn'" {
 
 test "LOG_LEVEL='info'" {
     var filter = try Filter.build(.{
-        .log_level = "info",
+        .logger_level = "info",
         .allocator = std.testing.allocator,
     });
     defer filter.destroy();
@@ -54,7 +54,7 @@ test "LOG_LEVEL='info'" {
 
 test "LOG_LEVEL='debug'" {
     var filter = try Filter.build(.{
-        .log_level = "debug",
+        .logger_level = "debug",
         .allocator = std.testing.allocator,
     });
     defer filter.destroy();
@@ -64,7 +64,7 @@ test "LOG_LEVEL='debug'" {
 
 test "LOG_LEVEL='trace'" {
     var filter = try Filter.build(.{
-        .log_level = "trace",
+        .logger_level = "trace",
         .allocator = std.testing.allocator,
     });
     defer filter.destroy();
@@ -74,7 +74,7 @@ test "LOG_LEVEL='trace'" {
 
 test "LOG_LEVEL='not-a-level'" {
     var result = Filter.build(.{
-        .log_level = "not-a-level",
+        .logger_level = "not-a-level",
         .allocator = std.testing.allocator,
     });
 
@@ -83,7 +83,7 @@ test "LOG_LEVEL='not-a-level'" {
 
 test "LOG_LEVEL='err'" {
     var result = Filter.build(.{
-        .log_level = "err",
+        .logger_level = "err",
         .allocator = std.testing.allocator,
     });
 
