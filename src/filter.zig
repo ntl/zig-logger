@@ -1,6 +1,6 @@
 const std = @import("std");
 
-pub const TagFilter = struct {
+pub const Filter = struct {
     state: State = State.untagged,
 
     exclude_list: []const u64 = &.{},
@@ -12,7 +12,7 @@ pub const TagFilter = struct {
         log_tags: ?[]const u8 = null,
         allocator: std.mem.Allocator = std.heap.page_allocator,
     };
-    pub fn build(args: BuildArguments) !TagFilter {
+    pub fn build(args: BuildArguments) !Filter {
         const allocator = args.allocator;
 
         const log_tags = args.log_tags orelse env_var: {
@@ -24,7 +24,7 @@ pub const TagFilter = struct {
         };
 
         if (log_tags.len == 0) {
-            return TagFilter{};
+            return Filter{};
         }
 
         var initial_state = State.no_match;
@@ -55,7 +55,7 @@ pub const TagFilter = struct {
             }
         }
 
-        return TagFilter{
+        return Filter{
             .state = initial_state,
             .include_list = include_list.items,
             .exclude_list = exclude_list.items,
@@ -63,14 +63,14 @@ pub const TagFilter = struct {
         };
     }
 
-    pub fn destroy(self: *TagFilter) void {
+    pub fn destroy(self: *Filter) void {
         if (self.allocator) |allocator| {
             allocator.free(self.include_list);
             allocator.free(self.exclude_list);
         }
     }
 
-    pub fn write_predicate(self: TagFilter, tag_digests: []const u64) bool {
+    pub fn write_predicate(self: Filter, tag_digests: []const u64) bool {
         var state = self.state;
 
         if (state == State.override) {
@@ -92,8 +92,8 @@ pub const TagFilter = struct {
         }
     }
 
-    pub fn specialize(self: TagFilter, tags: []const []const u8) TagFilter {
-        var tag_filter = TagFilter{
+    pub fn specialize(self: Filter, tags: []const []const u8) Filter {
+        var filter = Filter{
             .state = self.state,
             .include_list = self.include_list,
             .exclude_list = self.exclude_list,
@@ -101,14 +101,13 @@ pub const TagFilter = struct {
 
         for (tags) |tag| {
             const tag_digest = digest(tag);
-
-            tag_filter.apply(tag_digest);
+            filter.apply(tag_digest);
         }
 
-        return tag_filter;
+        return filter;
     }
 
-    pub fn apply(self: *TagFilter, tag_digest: u64) void {
+    pub fn apply(self: *Filter, tag_digest: u64) void {
         self.state = next_state(tag_digest, self.state, self.include_list, self.exclude_list);
     }
 
