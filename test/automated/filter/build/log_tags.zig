@@ -2,20 +2,14 @@ const std = @import("std");
 
 const Filter = @import("log").Filter;
 
-test "No Arguments" {
-    var filter = try Filter.build(.{});
-
-    try std.testing.expect(@TypeOf(filter) == Filter);
-}
-
-test "LOG_TAGS=''" {
+test "No LOG_TAGS" {
     var filter = try Filter.build(.{
-        .log_tags = "",
+        .log_tags = null,
         .allocator = std.testing.allocator,
     });
     defer filter.destroy();
 
-    try std.testing.expect(filter.state == Filter.State.untagged);
+    try std.testing.expect(filter.state == .untagged);
     try std.testing.expect(filter.exclude_list.len == 0);
     try std.testing.expect(filter.include_list.len == 0);
 }
@@ -27,7 +21,7 @@ test "LOG_TAGS='some_tag'" {
     });
     defer filter.destroy();
 
-    try std.testing.expect(filter.state == Filter.State.no_match);
+    try std.testing.expect(filter.state == .no_match);
 
     try std.testing.expect(filter.include_list.len == 1);
     try std.testing.expect(filter.include_list[0] == Filter.digest("some_tag"));
@@ -40,7 +34,7 @@ test "LOG_TAGS='some_tag,other_tag'" {
     });
     defer filter.destroy();
 
-    try std.testing.expect(filter.state == Filter.State.no_match);
+    try std.testing.expect(filter.state == .no_match);
 
     try std.testing.expect(filter.include_list.len == 2);
     try std.testing.expect(filter.include_list[0] == Filter.digest("some_tag"));
@@ -54,7 +48,7 @@ test "LOG_TAGS='-some_tag'" {
     });
     defer filter.destroy();
 
-    try std.testing.expect(filter.state == Filter.State.no_match);
+    try std.testing.expect(filter.state == .no_match);
 
     try std.testing.expect(filter.exclude_list.len == 1);
     try std.testing.expect(filter.exclude_list[0] == Filter.digest("some_tag"));
@@ -82,7 +76,7 @@ test "LOG_TAGS='_untagged'" {
     });
     defer filter.destroy();
 
-    try std.testing.expect(filter.state == Filter.State.untagged);
+    try std.testing.expect(filter.state == .untagged);
     try std.testing.expect(filter.include_list.len == 0);
     try std.testing.expect(filter.exclude_list.len == 0);
 }
@@ -94,7 +88,7 @@ test "LOG_TAGS='some_tag,_untagged,-other_tag'" {
     });
     defer filter.destroy();
 
-    try std.testing.expect(filter.state == Filter.State.untagged);
+    try std.testing.expect(filter.state == .untagged);
     try std.testing.expect(filter.include_list.len == 1);
     try std.testing.expect(filter.exclude_list.len == 1);
 }
@@ -106,7 +100,7 @@ test "LOG_TAGS='_all'" {
     });
     defer filter.destroy();
 
-    try std.testing.expect(filter.state == Filter.State.override);
+    try std.testing.expect(filter.state == .override);
 }
 
 test "LOG_TAGS='some_tag,-other_tag,_all,yet_another_tag'" {
@@ -116,7 +110,7 @@ test "LOG_TAGS='some_tag,-other_tag,_all,yet_another_tag'" {
     });
     defer filter.destroy();
 
-    try std.testing.expect(filter.state == Filter.State.override);
+    try std.testing.expect(filter.state == .override);
 }
 
 test "LOG_TAGS='_not_excluded'" {
@@ -126,7 +120,7 @@ test "LOG_TAGS='_not_excluded'" {
     });
     defer filter.destroy();
 
-    try std.testing.expect(filter.state == Filter.State.match);
+    try std.testing.expect(filter.state == .match);
     try std.testing.expect(filter.include_list.len == 0);
     try std.testing.expect(filter.exclude_list.len == 0);
 }
@@ -138,7 +132,7 @@ test "LOG_TAGS='some_tag,-other_tag,_not_excluded,yet_another_tag'" {
     });
     defer filter.destroy();
 
-    try std.testing.expect(filter.state == Filter.State.match);
+    try std.testing.expect(filter.state == .match);
     try std.testing.expect(filter.include_list.len == 2);
     try std.testing.expect(filter.exclude_list.len == 1);
 }

@@ -1,33 +1,58 @@
 const std = @import("std");
 
 pub const Filter = struct {
-    state: State = State.untagged,
+    logger_level: Level = .info,
+
+    state: State = .untagged,
 
     exclude_list: []const u64 = &.{},
     include_list: []const u64 = &.{},
 
     allocator: ?std.mem.Allocator = null,
 
+    pub const UnknownLogLevelError = error.UnknownLogLevel;
+
+    const BuildError = error {
+        UnknownLogLevel,
+        OutOfMemory,
+    } || std.process.GetEnvVarOwnedError;
+
     const BuildArguments = struct {
+        log_level: ?[]const u8 = null,
         log_tags: ?[]const u8 = null,
         allocator: std.mem.Allocator = std.heap.page_allocator,
     };
-    pub fn build(args: BuildArguments) !Filter {
+    pub fn build(args: BuildArguments) BuildError!Filter {
         const allocator = args.allocator;
+
+        const log_level_str = args.log_level orelse env_var: {
+            if (try std.process.hasEnvVar(allocator, "LOG_LEVEL")) {
+                break :env_var try std.process.getEnvVarOwned(allocator, "LOG_LEVEL");
+            } else {
+                break :env_var Defaults.log_level;
+            }
+        };
+
+        const logger_level = level: {
+            if (std.mem.eql(u8, log_level_str, "err")) {
+                return UnknownLogLevelError;
+            } else if (std.mem.eql(u8, log_level_str, "error")) {
+                break :level .err;
+            } else {
+                break :level std.meta.stringToEnum(Level, log_level_str)
+                    orelse return UnknownLogLevelError;
+            }
+        };
 
         const log_tags = args.log_tags orelse env_var: {
             if (try std.process.hasEnvVar(allocator, "LOG_TAGS")) {
                 break :env_var try std.process.getEnvVarOwned(allocator, "LOG_TAGS");
             } else {
-                break :env_var "";
+                break :env_var Defaults.log_tags;
             }
         };
 
-        if (log_tags.len == 0) {
-            return Filter{};
-        }
-
-        var initial_state = State.no_match;
+        var initial_state: State = if (log_tags.len == 0) .untagged else .no_match;
 
         var include_list = std.ArrayList(u64).init(allocator);
         var exclude_list = std.ArrayList(u64).init(allocator);
@@ -37,12 +62,12 @@ pub const Filter = struct {
         while (iterator.next()) |tag| {
             if (tag[0] == '_') {
                 if (std.mem.eql(u8, tag, "_all")) {
-                    initial_state = State.override;
+                    initial_state = .override;
                     break;
                 } else if (std.mem.eql(u8, tag, "_not_excluded")) {
-                    initial_state = State.match;
-                } else if (std.mem.eql(u8, tag, "_untagged") and initial_state != State.match) {
-                    initial_state = State.untagged;
+                    initial_state = .match;
+                } else if (std.mem.eql(u8, tag, "_untagged") and initial_state != .match) {
+                    initial_state = .untagged;
                 }
             } else if (tag[0] == '-') {
                 if (tag.len > 1) {
@@ -56,6 +81,7 @@ pub const Filter = struct {
         }
 
         return Filter{
+            .logger_level = logger_level,
             .state = initial_state,
             .include_list = include_list.items,
             .exclude_list = exclude_list.items,
@@ -70,22 +96,26 @@ pub const Filter = struct {
         }
     }
 
-    pub fn write_predicate(self: Filter, tag_digests: []const u64) bool {
+    pub fn write_predicate(self: Filter, message_level: Level, tag_digests: []const u64) bool {
+        if (@enumToInt(message_level) > @enumToInt(self.logger_level)) {
+            return false;
+        }
+
         var state = self.state;
 
-        if (state == State.override) {
+        if (state == .override) {
             return true;
         }
 
         for (tag_digests) |tag_digest| {
             state = next_state(tag_digest, state, self.include_list, self.exclude_list);
 
-            if (state == State.override) {
+            if (state == .override) {
                 return true;
             }
         }
 
-        if (state == State.no_match or state == State.exclude) {
+        if (state == .no_match or state == .exclude) {
             return false;
         } else {
             return true;
@@ -112,33 +142,33 @@ pub const Filter = struct {
     }
 
     fn next_state(tag_digest: u64, state: State, include_list: []const u64, exclude_list: []const u64) State {
-        if (state == State.override) {
-            return State.override;
+        if (state == .override) {
+            return .override;
         } else if (tag_digest == override_digest or tag_digest == override_short_digest) {
-            return State.override;
+            return .override;
         }
 
-        if (state == State.exclude) {
-            return State.exclude;
+        if (state == .exclude) {
+            return .exclude;
         } else {
             for (exclude_list) |exclude_digest| {
                 if (tag_digest == exclude_digest) {
-                    return State.exclude;
+                    return .exclude;
                 }
             }
         }
 
-        if (state == State.match) {
-            return State.match;
+        if (state == .match) {
+            return .match;
         } else {
             for (include_list) |include_digest| {
                 if (tag_digest == include_digest) {
-                    return State.match;
+                    return .match;
                 }
             }
         }
 
-        return State.no_match;
+        return .no_match;
     }
 
     // TODO: Research a more appropriate hashing algorithm or seed
@@ -156,5 +186,20 @@ pub const Filter = struct {
         match,
         exclude,
         override,
+    };
+
+    pub const Level = enum(isize) {
+        _none = -1,
+        fatal,
+        err,
+        warn,
+        info,
+        debug,
+        trace,
+    };
+
+    pub const Defaults = .{
+        .log_level = "info",
+        .log_tags = "",
     };
 };

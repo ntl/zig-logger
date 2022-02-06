@@ -7,7 +7,7 @@ test "Produces New Filter With Identical Include/Exclude Lists" {
 
     var filter = source_filter.specialize(&.{});
 
-    filter.state = Filter.State.override;
+    filter.state = .override;
     try std.testing.expect(source_filter.state != filter.state);
 
     try std.testing.expect(filter.include_list.ptr == source_filter.include_list.ptr);
@@ -21,5 +21,5 @@ test "Applies the Given Tags" {
 
     var filter = source_filter.specialize(&.{ "some_tag", "other_tag" });
 
-    try std.testing.expect(filter.state == Filter.State.exclude);
+    try std.testing.expect(filter.state == .exclude);
 }
