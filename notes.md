@@ -32,7 +32,7 @@
 | `info`   | 3       | Yes     | (none)            | (none)
 | `debug`  | 4       | No      | Green             | `\e[32m … \e[39m`
 | `trace`  | 5       | No      | Cyan              | `\e[36m … \e[39m`
-| `_max`   | 5       | Yes     | (none)            | (none)
+| `_max`   | 5       | No      | (none)            | (none)
 
 ## Message Examples
 
@@ -54,7 +54,70 @@ Some message (Some Value: 1, Other Value: 11)
 
 - Writes to the logger irrespective of tagging and level configuration
 
+## Code Sketches
+
+### Zig
+
+``` zig
+var logger = Log.build("SomeSubject");
+
+// Printed
+logger.info("Some message (Some Value: {}, Other Value: {})", .{ 11, 111 });
+// Printed conditionally based on LOG_TAGS setting
+logger.info_tagged("Some message (Some Value: {}, Other Value: {})", .{ 11, 111 }, .{ "some_tag" });
+
+// True
+logger.write_predicate("info", "Some message (Some Value: {}, Other Value: {})", .{ 11, 111 });
+// False
+logger.write_predicate("trace", "Some message (Some Value: {}, Other Value: {})", .{ 11, 111 });
+// True conditionally based on LOG_TAGS setting
+logger.write_predicate("info", "Some message (Some Value: {}, Other Value: {})", .{ 11, 111 }, .{ "some_tag" });
+
+// Set Level
+logger.level = .warn;
+// Not Printed
+logger.info("Some message (Some Value: {}, Other Value: {})", .{ 11, 111 });
+
+// Set tags, implemented in terms of logger.digest_tags
+logger.set_tags(.{ "some_tag", "other_tags" });
+// -or- (comptime, so no allocator needed)
+logger.tags = Log.digest_tags(.{ "some_tag", "other_tags" });
+// -or- (uses logger.allocator)
+logger.tags = logger.digest_tags(.{ "some_tag", "other_tags" });
+// -or-
+logger = Log.build_tagged("SomeSubject", .{ "some_tag", "other_tag" });
+// Printed conditionally based on LOG_TAGS setting
+logger.info("Some message (Some Value: {}, Other Value: {})", .{ 11, 111 });
+```
+
+### Ruby
+
+``` ruby
+# Zig: var logger = Log.build("SomeSubject");
+logger = Log.build("SomeSubject")
+
+# Zig: const SomeLogger = Log.specialize(.{ "some_tag", "other_tag" });
+class SomeLogger < Log
+  def self.tag!(tags)
+    tags << :some_tag
+    tags << :other_tag
+  end
+end
+
+# Zig: var logger = SomeLogger.build("OtherSubject");
+logger = SomeLogger.build("OtherSubject")
+```
+
 ## Differences from Eventide Logger
+
+### Logger
+
+- No telemetry
+
+- No logger registry
+  - Requires memory allocation
+  - Native code doesn't benefit from it; the subject will never be an instance
+    of a class
 
 ### Tags
 
@@ -69,7 +132,7 @@ Some message (Some Value: 1, Other Value: 11)
   - This resolves an issue filed with `evt-log` on GitHub:
     https://github.com/eventide-project/log/pull/9
 
-### Logger
+### Levels
 
 - Log levels are static
   - A native call to `logger.info(...)` has to invoke a function that is
@@ -80,8 +143,3 @@ Some message (Some Value: 1, Other Value: 11)
   - `logger.call("info", "Some message")` might be possible, but still not as
     amenable to scanning as `logger.info("Some message")`. It also pays a
     performance penalty
-
-- No logger registry
-  - Requires memory allocation
-  - Native code doesn't benefit from it; the subject will never be an instance
-    of a class
