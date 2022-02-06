@@ -1,93 +1,87 @@
 # Notes
 
-## Tags
+## Environment Variables
 
-### Eventide Logger
+| Tag              | Description                                        | Default
+| ---              | ---                                                | ---
+| `CONSOLE_DEVICE` | `stderr` or `stdout`                               | `stderr`
+| `LOG_TAGS`       | Filters messages based on their tags               | (not set)
+| `LOG_LEVEL`      | Filters messages based on log level                | `info`
+| `LOG_FORMATTERS` | Toggles styling (colors, bold)                     | `on`
+| `LOG_HEADER`     | Toggles metadata display (timestamp, subject, etc) | `on`
 
-Note: "logger tags" are set by the LOG_TAGS environment variable. Tags from
-`#tag!` on specialized logger subclasses are considered message tags.
+## Levels
 
-1. Considers log level before any tags
-2. If message and the logger both lack tags, print the message
-3. If the message has the special `*` tag, print the message
-4. If the logger has the special `_all` tag, print the message
-5. If the logger has the special `_untagged` tag, and the message lacks tags,
-   print the message
-6. If the message and the logger both have tags, print the message if the tags
-   intersect:
-  1. If any of the message's tags are excluded (e.g. message has `some_tag` and
-     logger has `-some_tag`), no interesection
-  2. If any of the message's tags are included (e.g. message has `some_tag` and
-     logger has `some_tag`), intersection
-  3. Otherwise, no intersection
-7. Otherwise, don't print the message
+- Loggers don't need to have any levels
+- Loggers with no levels:
+  - Messages will be printed even if and only if their level is nil
+  - Messages with a level of `_none` won't even be printed
+- Loggers with no levels
+  - Messages won't get printed if their level is nil
+  - Messages with a level of `_none` will be printed
 
-### Terms
+### Default Configuration
 
-Message Tag
-: Tag added to a particular message, e.g. `log.info(tag: :some_tag) { … }`
-Logger Tag
-: Tag added to a particular logger, e.g. `def tag!(tags) tags << :some_library`
-Exclude Tag
-: Tag the user wants to filter out via `LOG_TAGS=-exclude_tag`
-Include Tag
-: Tag the user wants to include via `LOG_TAGS=include_tag`
-Tag Setting
-: Include and exclude tags, e.g. `LOG_TAGS`
+| Level    | Ordinal | Visible | Format            | SGR Codes
+| ---      | ---     | ---     | ---               | ---
+| `_none`  | -1      | Yes     | (none)            | (none)
+| `_min`   | 0       | Yes     | (none)            | (none)
+| `fatal`  | 0       | Yes     | Red on black      | `\e[31;40m … \e[49;39m`
+| `error`  | 1       | Yes     | Bold white on red | `\e[1;41m … \e[49;22m`
+| `warn`   | 2       | Yes     | Yellow on black   | `\e[33;40m … \e[49;39m`
+| `info`   | 3       | Yes     | (none)            | (none)
+| `debug`  | 4       | No      | Green             | `\e[32m … \e[39m`
+| `trace`  | 5       | No      | Cyan              | `\e[36m … \e[39m`
+| `_max`   | 5       | Yes     | (none)            | (none)
 
-### State Machine
+## Message Examples
 
-When iterating through a message's tags, a state machine is used to track
-whether to print the message.
+### Default Configuration
 
-States:
-
-- Untagged
-  - No message tags have been iterated
-  - If finished iterating, message should be printed
-
-- Match Needed
-  - No message tags have been matched
-  - If finished iterating, message should *not* be printed
-
-- Matched
-  - At least one message tag has been matched to the include list
-  - Do *not* consider the include list in this state
-  - If finished iterating, message should be printed
-
-- Excluded
-  - At least one message tag has been matched to the exclude list
-  - Do *not* consider the exclude or exclude lists in this state
-  - If finished iterating, message should *not* be printed
-
-``` ruby
-class Logger
-  def print?(message_tags)
-    # Either :untagged or :match_needed, depending on if LOG_TAGS includes
-    # "_untagged" or isn't set at all
-    state = self.initial_state
-
-    message_tags.each do |tag|
-      if state == :print
-        break
-      end
-
-      if tag == :*
-        state = :print
-      elsif state != :excluded && self.exclude_tag?(tag)
-        state = :excluded
-      elsif state != :matched && self.include_tag?(tag)
-        state = :matched
-      elsif state == :untagged
-        state = :match_needed
-      end
-    end
-
-    if [:untagged, :matched].include?(state)
-      state = :print
-    end
-
-    return state == :print
-  end
-end
 ```
+[2022-02-06T01:43:20.15905Z] SomeSubject: Some message (Some Value: 1, Other Value: 11)
+[2022-02-06T01:43:20.16044Z] OtherSubject ERROR: \e[1;41mSome message (Some Value: 1, Other Value: 11)\e[49;22m
+```
+
+### No Header
+
+```
+Some message (Some Value: 1, Other Value: 11)
+\e[1;41mSome message (Some Value: 1, Other Value: 11)\e[49;22m
+```
+
+## Puts
+
+- Writes to the logger irrespective of tagging and level configuration
+
+## Differences from Eventide Logger
+
+### Tags
+
+- Added `_override` log tag
+  - On a message, acts the same as `*`; causes message to be printed
+    irrespective of tag configuration
+  - `LOG_TAGS` can also include `_override` (or `*`), and causes all messages
+    to be printed irrespective of tag configuration
+
+- `_not_excluded` tag; works like `_all` except has less precedence than
+  excluded tags
+  - This resolves an issue filed with `evt-log` on GitHub:
+    https://github.com/eventide-project/log/pull/9
+
+### Logger
+
+- Log levels are static
+  - A native call to `logger.info(...)` has to invoke a function that is
+    compiled into the binary; it's not possible to define level specific log
+    invocation methods on-the-fly
+  - `logger.call(logger.levels.info, "Some message")` is possible, but more
+    difficult to scan
+  - `logger.call("info", "Some message")` might be possible, but still not as
+    amenable to scanning as `logger.info("Some message")`. It also pays a
+    performance penalty
+
+- No logger registry
+  - Requires memory allocation
+  - Native code doesn't benefit from it; the subject will never be an instance
+    of a class
