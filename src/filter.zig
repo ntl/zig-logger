@@ -1,5 +1,7 @@
 const std = @import("std");
 
+const Level = @import("./level.zig").Level;
+
 pub const Filter = struct {
     logger_level: Level = .info,
 
@@ -193,16 +195,6 @@ pub const Filter = struct {
         match,
         exclude,
         override,
-    };
-
-    pub const Level = enum(isize) {
-        _none = -1,
-        fatal,
-        err,
-        warn,
-        info,
-        debug,
-        trace,
     };
 
     pub const Defaults = .{
